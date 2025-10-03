@@ -8,76 +8,139 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 public class OrderPage {
     private final WebDriver driver;
 
-    // Локаторы для формы заказа
-    private final By nameInput = By.xpath(".//input[@placeholder='* Имя']");// Поле ввода имени
-    private final By surnameInput = By.xpath(".//input[@placeholder='* Фамилия']");// Поле ввода фамилии
-    private final By addressInput = By.xpath(".//input[@placeholder='* Адрес: куда привезти заказ']");// Поле ввода адреса
-    private final By metroInput = By.xpath(".//input[@placeholder='* Станция метро']");// Поле ввода станции метро
-    private final By phoneInput = By.xpath(".//input[@placeholder='* Телефон: на него позвонит курьер']");// Поле ввода телефона
-    private final By nextButton = By.xpath(".//button[text()='Далее']");// Кнопка "Далее" для перехода ко второй части формы
+    // Локаторы для первой части формы
+    private final By nameInput = By.xpath(".//input[@placeholder='* Имя']");
+    private final By surnameInput = By.xpath(".//input[@placeholder='* Фамилия']");
+    private final By addressInput = By.xpath(".//input[@placeholder='* Адрес: куда привезти заказ']");
+    private final By metroInput = By.xpath(".//input[@placeholder='* Станция метро']");
+    private final By phoneInput = By.xpath(".//input[@placeholder='* Телефон: на него позвонит курьер']");
+    private final By nextButton = By.xpath(".//button[text()='Далее']");
+
+    // Локаторы для выпадающего списка метро
+    private final By metroDropdown = By.className("select-search__select");
+    private final By metroOption = By.xpath(".//li[@class='select-search__row']//button");
 
     // Локаторы для второй части формы
-    private final By dateInput = By.xpath(".//input[@placeholder='* Когда привезти самокат']"); // Поле ввода даты доставки
-    private final By rentalPeriod = By.className("Dropdown-placeholder");// Выпадающий список с периодом аренды
-    private final By periodOption = By.xpath(".//div[@class='Dropdown-option']");// Опции в выпадающем списке
-    private final By colorBlack = By.id("black"); // Чекбокс черного цвета
-    private final By colorGrey = By.id("grey");// Чекбокс серого цвета
-    private final By commentInput = By.xpath(".//input[@placeholder='Комментарий для курьера']");// Поле для комментария курьеру
-    private final By orderButton = By.xpath(".//button[contains(text(), 'Заказать')]");// Кнопка "Заказать" для оформления
-    private final By confirmButton = By.xpath(".//button[text()='Да']"); // Кнопка подтверждения заказа "Да"
-    private final By successMessage = By.xpath(".//div[contains(text(), 'Заказ оформлен')]");// Сообщение об успешном оформлении заказа
+    private final By dateInput = By.xpath(".//input[@placeholder='* Когда привезти самокат']");
+    private final By rentalPeriod = By.className("Dropdown-root");
+    private final By periodOption = By.xpath(".//div[@class='Dropdown-option']");
+    private final By colorBlack = By.id("black");
+    private final By colorGrey = By.id("grey");
+    private final By commentInput = By.xpath(".//input[@placeholder='Комментарий для курьера']");
+    private final By orderButton = By.xpath("//*[@id=\"root\"]/div/div[2]/div[3]/button[2]");
+    private final By confirmButton = By.xpath(".//button[text()='Да']");
+    private final By successMessage = By.xpath(".//div[contains(text(), 'Заказ оформлен')]");
 
     public OrderPage(WebDriver driver) {
         this.driver = driver;
     }
 
-    // Заполнение первой части формы
-    public void fillFirstPart(String name, String surname, String address, String metro, String phone) {
-        driver.findElement(nameInput).sendKeys(name); // Заполняем поле имени
-        driver.findElement(surnameInput).sendKeys(surname); // Заполняем поле фамилии
-        driver.findElement(addressInput).sendKeys(address); // Заполняем поле адреса
-        driver.findElement(metroInput).sendKeys(metro); // Заполняем поле метро и выбираем станцию
-        driver.findElements(By.className("select-search__row")).get(0).click(); // Выбор станции метро
-        driver.findElement(phoneInput).sendKeys(phone); // Заполняем поле телефона
-        driver.findElement(nextButton).click();  // Нажимаем кнопку "Далее" для перехода ко второй части
+    public void fillFirstPart(String name, String surname, String address, String metroStation, String phone) {
+        // Заполняем основные поля
+        driver.findElement(nameInput).sendKeys(name);
+        driver.findElement(surnameInput).sendKeys(surname);
+        driver.findElement(addressInput).sendKeys(address);
+        driver.findElement(phoneInput).sendKeys(phone);
+
+        // Заполняем поле метро
+        fillMetroStation(metroStation);
+
+        // Нажимаем "Далее"
+        driver.findElement(nextButton).click();
     }
+    //Метод для первой страницы
+    private void fillMetroStation(String metroStation) {
+        // Кликаем на поле ввода метро
+        WebElement metroField = driver.findElement(metroInput);
+        metroField.click();
+        metroField.sendKeys(metroStation);
 
-    // Заполнение второй части формы
-    public void fillSecondPart(String date, String period, String color, String comment) {
-        // Установка даты
-        WebElement dateField = driver.findElement(dateInput);  // Находим поле ввода даты
-        dateField.sendKeys(Keys.CONTROL + "a");   // Очищаем поле: Ctrl+A
-        dateField.sendKeys(Keys.DELETE); //и Delete
-        dateField.sendKeys(date);  // Вводим новую дату
-        dateField.sendKeys(Keys.ENTER); // Нажимаем Enter для подтверждения
+        // Ждем появления выпадающего списка
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.visibilityOfElementLocated(metroDropdown));
 
-        // Выбор периода аренды
-        driver.findElement(rentalPeriod).click();  // Открываем выпадающий список
-        driver.findElements(periodOption).stream()    // Преобразуем список в поток
-                .filter(element -> element.getText().equals(period)) // Фильтруем по тексту
-                .findFirst()  // Берем первый подходящий элемент
-                .ifPresent(WebElement::click);     // Если нашли - кликаем
-
-        // Выбор цвета
-        if ("black".equals(color)) {
-            driver.findElement(colorBlack).click();
-        } else if ("grey".equals(color)) {
-            driver.findElement(colorGrey).click();
+        // Ищем нужную станцию метро в списке
+        List<WebElement> metroOptions = driver.findElements(metroOption);
+        for (WebElement option : metroOptions) {
+            if (option.getText().contains(metroStation)) {
+                option.click();
+                return;
+            }
         }
 
-        // Комментарий
+        // Если не нашли точное совпадение, кликаем на первую опцию
+        if (!metroOptions.isEmpty()) {
+            metroOptions.get(0).click();
+        }
+    }
+//метод для второй страницы
+    public void fillSecondPart(String date, String period, String color, String comment) {
+        // Заполняем дату
+        fillDate(date);
+
+        // Выбираем период аренды
+        selectRentalPeriod(period);
+
+        // Выбираем цвет
+        selectColor(color);
+
+        // Заполняем комментарий
         driver.findElement(commentInput).sendKeys(comment);
 
-        // Нажатие кнопки заказа
+        // Нажимаем кнопку заказа
         driver.findElement(orderButton).click();
     }
 
-    // Подтверждение заказа
+    private void fillDate(String date) {
+        WebElement dateField = driver.findElement(dateInput);
+
+        //  вводим дату
+        dateField.sendKeys(date);
+        dateField.sendKeys(Keys.ENTER);
+
+        // Кликаем вне поля чтобы закрыть календарь
+        driver.findElement(By.tagName("body")).click();
+    }
+
+    private void selectRentalPeriod(String period) {
+        // Открываем выпадающий список
+        driver.findElement(rentalPeriod).click();
+
+        // Ждем появления опций
+        new WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(ExpectedConditions.visibilityOfElementLocated(periodOption));
+
+        // Ищем нужный период
+        List<WebElement> periods = driver.findElements(periodOption);
+        for (WebElement periodOption : periods) {
+            if (periodOption.getText().equals(period)) {
+                periodOption.click();
+                return;
+            }
+        }
+
+        // Если не нашли, выбираем первую опцию
+        if (!periods.isEmpty()) {
+            periods.get(0).click();
+        }
+    }
+
+    private void selectColor(String color) {
+        if ("black".equalsIgnoreCase(color)) {
+            driver.findElement(colorBlack).click();
+        } else if ("grey".equalsIgnoreCase(color)) {
+            driver.findElement(colorGrey).click();
+        }
+    }
+
     public void confirmOrder() {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(confirmButton));
         driver.findElement(confirmButton).click();
     }
 
