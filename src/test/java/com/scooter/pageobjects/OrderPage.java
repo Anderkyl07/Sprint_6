@@ -6,6 +6,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import static org.junit.jupiter.api.Assertions.*;
+import org.openqa.selenium.JavascriptExecutor;
+
 
 import java.time.Duration;
 
@@ -27,9 +30,9 @@ public class OrderPage {
     private final By colorBlack = By.id("black"); // Чекбокс черного цвета
     private final By colorGrey = By.id("grey");// Чекбокс серого цвета
     private final By commentInput = By.xpath(".//input[@placeholder='Комментарий для курьера']");// Поле для комментария курьеру
-    private final By orderButton = By.xpath(".//button[contains(text(), 'Заказать')]");// Кнопка "Заказать" для оформления
-    private final By confirmButton = By.xpath(".//button[text()='Да']"); // Кнопка подтверждения заказа "Да"
-    private final By successMessage = By.xpath(".//div[contains(text(), 'Заказ оформлен')]");// Сообщение об успешном оформлении заказа
+    private final By orderButton = By.xpath("//button[contains(@class, 'Button_Middle__1CSJM') and text()='Заказать']");
+    private final By confirmButton = By.xpath("//button[@class='Button_Button__ra12g Button_Middle__1CSJM' and text()='Да']");
+    private final By successMessage = By.xpath("//div[contains(@class, 'Order_ModalHeader') and contains(text(), 'Заказ оформлен')]");
 
     public OrderPage(WebDriver driver) {
         this.driver = driver;
@@ -56,11 +59,14 @@ public class OrderPage {
         dateField.sendKeys(Keys.ENTER); // Нажимаем Enter для подтверждения
 
         // Выбор периода аренды
-        driver.findElement(rentalPeriod).click();  // Открываем выпадающий список
-        driver.findElements(periodOption).stream()    // Преобразуем список в поток
-                .filter(element -> element.getText().equals(period)) // Фильтруем по тексту
-                .findFirst()  // Берем первый подходящий элемент
-                .ifPresent(WebElement::click);     // Если нашли - кликаем
+        driver.findElement(rentalPeriod).click();
+        new WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(ExpectedConditions.visibilityOfElementLocated(periodOption));
+
+        driver.findElements(periodOption).stream()
+                .filter(element -> element.getText().equals(period))
+                .findFirst()
+                .ifPresent(WebElement::click);
 
         // Выбор цвета
         if ("black".equals(color)) {
@@ -70,23 +76,53 @@ public class OrderPage {
         }
 
         // Комментарий
-        driver.findElement(commentInput).sendKeys(comment);
+        WebElement commentField = driver.findElement(commentInput);
+        commentField.sendKeys(comment);
 
-        // Нажатие кнопки заказа
-        driver.findElement(orderButton).click();
-    }
+// Даем время для применения комментария
+        new WebDriverWait(driver, Duration.ofSeconds(2))
+                .until(driver -> commentField.getAttribute("value").equals(comment));
 
-    // Подтверждение заказа
-    public void confirmOrder() {
-        driver.findElement(confirmButton).click();
-    }
-
-    // Проверка успешного оформления
-    public boolean isOrderSuccess() {
-        // Используем явное ожидание - ждем до 5 секунд пока элемент появится
+// Нажатие кнопки заказа
+        WebElement orderBtn = driver.findElement(orderButton);
         new WebDriverWait(driver, Duration.ofSeconds(5))
-                .until(ExpectedConditions.visibilityOfElementLocated(successMessage));
-        // Проверяем, что элемент отображается
-        return driver.findElement(successMessage).isDisplayed();
+                .until(ExpectedConditions.elementToBeClickable(orderBtn));
+
+// Принудительный клик через JavaScript
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", orderBtn);
+    }
+
+    // Подтверждение заказа с проверкой успешности
+    public void confirmOrder() {
+        // Ждем и нажимаем кнопку подтверждения
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(confirmButton));
+        driver.findElement(confirmButton).click();
+
+        // Проверяем что заказ действительно успешно оформлен
+        verifyOrderSuccess();
+    }
+
+
+
+    // Проверка успешного оформления заказа
+    private void verifyOrderSuccess() {
+        try {
+            // Ждем появления сообщения об успехе
+            new WebDriverWait(driver, Duration.ofSeconds(3))
+                    .until(ExpectedConditions.visibilityOfElementLocated(successMessage));
+
+            // Проверяем что сообщение отображается
+            WebElement successElement = driver.findElement(successMessage);
+            assertTrue(successElement.isDisplayed(), "Сообщение об успешном оформлении заказа должно отображаться");
+
+            // Проверяем текст сообщения
+            String actualText = successElement.getText();
+            assertTrue(actualText.contains("Заказ оформлен"),
+                    "Сообщение должно содержать текст о успешном оформлении заказа. Фактический текст: " + actualText);
+
+        } catch (Exception e) {
+            fail("Не удалось подтвердить успешное оформление заказа: " + e.getMessage());
+        }
     }
 }
